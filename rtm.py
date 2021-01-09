@@ -30,3 +30,13 @@ class Rtm:
         print("Número de transições: ", self.nTransitions)
         print("Transições: ", self.transitions)
         print("Entrada: ", self.input)
+        print("Entrada é válida: ", self.CheckInput())
+
+    def CheckInput(self):
+        for val in self.input:
+            if val not in self.alphaInput:
+                return False
+        return True
+
+        
+

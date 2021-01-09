@@ -3,7 +3,6 @@ from rtm import Rtm
 
 def readFile(file):
     dt = file.splitlines()
-    print(dt)
     n = [dt[0][i] for i in range(len(dt[0])) if dt[0][i] != ' ']
     rtm = Rtm( int(n[0]), int(n[1]), int(n[2]), int(n[3]), dt[1], dt[2], dt[3], dt[4:-1], dt[len(dt) - 1])
     rtm.printValues()

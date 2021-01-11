@@ -17,6 +17,8 @@ class Rtm:
     headH = 0 # posicao da cabeca da fita de 'history'
     state = 0
 
+    currentTransitionIndex = 0
+
     def __init__(self, nStates, nInput, nTape, nTransitions, states, alphaInput, alphaTape, transitions, _input):
         self.nStates = nStates
         self.nInput = nInput
@@ -79,11 +81,38 @@ class Rtm:
         #self.Stage_3()
         #self.printTapes()
 
+    def setTransitionByStage(self, stage):
+
+        if int(stage) == self.nStates:
+            print("\nIt's all over, bro.")
+            exit()
+
+        count = -1
+        for t in self.transitions: # loop pelas transicoes
+            count += 1
+            if t[0] == stage:
+                print(t[0])
+                self.currentTransitionIndex = count
+                print("\n ----- Saltou transicao ------ Recebeu o valor: ", stage, " Setando index para: ", count, "\n")
+                return
+            
+
     def Stage_1(self):
         self.initTransitions()
         self.transitions = self.getQuadruples()
+
+        print("\nTransitions: ", self.transitions, "\n")
+
         self.state = self.transitions[0][0]
-        for transition in self.transitions: # loop pelas transicoes
+
+        self.setTransitionByStage(1) # vai paga a transicao do estagio 1
+
+        while True:
+
+            print("Input: ", self.inputTape)
+
+            transition = self.transitions[self.currentTransitionIndex] # pega a transicao atual
+            print("\nTransicao atual: ", transition, " index: ", self.currentTransitionIndex, "\n")
             aux = transition.partition("=")
             left = aux[0]
             right = aux[2]
@@ -91,23 +120,50 @@ class Rtm:
             check = left.partition(",")[2][0] # se a entrada for quintupla
             stage = left.partition(",")[0]
             move_write = right.partition(",")[2][0]
-            print ("Fita: ", self.inputTape, "Current state: ", self.state, curState, "cabeca input: ", self.inputTape[self.head], check)
-            if self.state ==  curState: # se a transicao é a esperada
-                print("Transicao:", transition)
-                if check != "/" and self.inputTape[self.head] == check: # se nao é uma barra -> ESCREVE
-                    self.inputTape[self.head] = move_write # recebe o simbolo do lado direito da transicao
-                    self.historyTape.append(stage) # numero do estagio
-                elif check == "/": # caso o simbolo seja uma barra -> MOVE
-                    if move_write == "L": # avancar para a esquerda
-                        print("Movendo pra esquerda", self.head)
-                        self.head -= 1
-                    elif move_write == "R": # avancar para a direita
-                        self.head += 1
-                        print("Movendo pra direita", self.head)
-                        # se a cabeça da fita é igual ao tamanho da fita, a fita é aumentada com um "B"
-                        if self.head == len(self.inputTape):
-                            self.inputTape.append("B")
-                self.state = right.partition(",")[0] # guarda a prox transição esperada
+
+            print ("Fita: ", self.inputTape, "Head at: ", self.inputTape[self.head])
+
+            print("\nCheck: ", self.inputTape[self.head], "\n")
+            print("\nHead: ", self.inputTape[self.head], "\n")
+
+            if check != "/" and self.inputTape[self.head] == check: # se nao é uma barra -> ESCREVE
+                self.inputTape[self.head] = move_write # recebe o simbolo do lado direito da transicao
+                self.historyTape.append(stage) # numero do estagio
+                print("\nEscreveu\n")
+                self.currentTransitionIndex += 1 # incrementa o index da transicao
+                wrote = True
+
+            elif check == "/": # caso o simbolo seja uma barra -> MOVE
+
+                if move_write == "L": # avancar para a esquerda
+                    print("Movendo pra esquerda", self.head)
+                    self.head -= 1
+                elif move_write == "R": # avancar para a direita
+                    self.head += 1
+                    print("Movendo pra direita", self.head)
+                    # se a cabeça da fita é igual ao tamanho da fita, a fita é aumentada com um "B"
+                    if self.head == len(self.inputTape):
+                        self.inputTape.append("B")
+
+                if right[0] != curState: # o seguinte eh outro valor de estagio
+                    self.setTransitionByStage(right[0]) # envia o valor do estagio para onde tem que saltar
+
+                else:
+                    self.currentTransitionIndex -= 1 # volta para a transicao anterior a este deslocamento
+                    
+                    
+                #elif self.inputTape[self.head] != check: # avanca a transicao
+                #   if move_write == "R":
+                #       self.currentTransitionIndex += 1
+                #  elif move_write == "L":
+                #     self.currentTransitionIndex -= 1
+
+            elif check != "/":
+                self.currentTransitionIndex += 2
+
+            if(self.currentTransitionIndex > len(self.transitions)):
+                print("It's over, bro.")
+                exit(0)
 
     def Stage_2(self):
         self.invertTransitions()

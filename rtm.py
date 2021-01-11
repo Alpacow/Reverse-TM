@@ -25,6 +25,7 @@ class Rtm:
         self.input = _input
 
         self.inputTape = [i for i in self.input]
+        self.historyTape = ["B" for i in range(len(self.input))]
         self.outputTape = ["B" for i in range(len(self.input))]
 
     def printValues(self):
@@ -70,38 +71,52 @@ class Rtm:
         self.initTransitions()
         self.transitions = self.getQuadruples()
         print("\n")
-        head = 0 # posicao onde se encontra a cabeca na fita
+        head = 0 # posicao onde se encontra a cabeca na fita 'input'
+        headH = 0 # posicao da cabeca da fita de 'history'
         for transition in self.transitions: # loop pelas transicoes
             aux = transition.partition("=")
             left = aux[0]
             right = aux[2]
-            check = left.partition(",")[2][0]
+            check = left.partition(",")[2][0] # se a entrada for quintupla
             stage = left.partition(",")[0]
             move_write = right.partition(",")[2][0]
+            #check = left[1] # se a entrada for quadrupla
+            #stage = left[0]
+            #move_write = right[1]
 
-            print("Transition: ", transition) # debug
-            print("Head: ", check, " Move or Write: ", move_write) # debug
+            #print("Transition: ", transition) # debug
+            #print("Head: ", check, " Move or Write: ", move_write) # debug
             #if check == self.input[head]: # input bate com a condicao da transicao
             if check != "/":
                 self.inputTape[head] = move_write # recebe o simbolo do lado direito da transicao
-                self.historyTape.append(stage) # numero do estagio
+                self.historyTape[headH] = stage # numero do estagio
+                if move_write == "R" or move_write == "X":
+                    headH += 1
+                    # se a cabeça da fita é igual ao tamanho da fita, a fita é aumentada com um "B"
+                    if headH == len(self.historyTape):
+                        self.historyTape.append("B")
+                if move_write == "L" or move_write != "X":
+                    if headH == len(self.historyTape)-1 or self.historyTape[headH] == "B":
+                        self.historyTape = self.historyTape[:headH-1]
+                        self.historyTape.append("B")
+                    headH -= 1
 
             elif check == "/": # caso o simbolo seja uma barra
                 if move_write == "L": # avancar para a direita
-                    print("Left shift") # debug
+                    #print("Left shift") # debug
                     # se a cabeça da fita é igual ao tamanho da fita -1, ou o cabeça da fita for símbolo branco, diminui a fita
                     if head == len(self.inputTape)-1 or self.inputTape[head] == "B":
-                        print("Diminuindo tamanho da fita:", head,len(self.inputTape)-1, self.inputTape[head])
+                        #print("Diminuindo tamanho da fita:", head,len(self.inputTape)-1, self.inputTape[head]) #debug
                         self.inputTape = self.inputTape[:head-1]
                         self.inputTape.append("B")
                     head -= 1
                 elif move_write == "R": # avancar para a esquerda
-                    print("Right shift") # debug
+                    #print("Right shift") # debug
                     head += 1
                     # se a cabeça da fita é igual ao tamanho da fita, a fita é aumentada com um "B"
                     if head == len(self.inputTape):
                         self.inputTape.append("B")
-            print(self.inputTape)
+            #print(self.inputTape) #debug
 
         print("\n")
         print("inputTape: ", self.inputTape)

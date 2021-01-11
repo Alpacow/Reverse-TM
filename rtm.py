@@ -57,17 +57,14 @@ class Rtm:
 
     def getQuadruples(self):
         newT = []
-        index = 1
         for t in self.transitions:
+            tr = t[0]
+            tr2 = t[3]
             check = t[1]
             symbol = t[4]
             sigma = t[5]
-            _next = index + 1
-            newT.append(str(index) + ',' + check + '/B=' + str(_next) + ',' + symbol + sigma + 'B')
-            next2 = _next + 1
-            newT.append(str(_next) + ',' + '/B/=' + str(next2) + ',' + sigma + sigma + '0')
-            index += 2
-            self.nTransitions = next2
+            newT.append(tr + ',' + check + '/B=' + tr + ',' + symbol + sigma + 'B')
+            newT.append(tr + ',' + '/B/=' + tr2 + ',' + sigma + sigma + '0')
         return newT
 
     def execution(self):
@@ -85,8 +82,6 @@ class Rtm:
     def Stage_1(self):
         self.initTransitions()
         self.transitions = self.getQuadruples()
-        #self.historyTape = ["B" for i in range(len(self.input))]
-        #print("Transitions: ", self.transitions)
         for transition in self.transitions: # loop pelas transicoes
             aux = transition.partition("=")
             left = aux[0]

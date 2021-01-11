@@ -59,6 +59,7 @@ class Rtm:
 
     def getQuadruples(self):
         newT = []
+        count = 0
         for t in self.transitions:
             tr = t[0]
             tr2 = t[3]
@@ -67,6 +68,8 @@ class Rtm:
             sigma = t[5]
             newT.append(tr + ',' + check + '/B=' + tr + ',' + symbol + sigma + 'B')
             newT.append(tr + ',' + '/B/=' + tr2 + ',' + sigma + sigma + '0')
+            count += 2
+        self.nTransitions = count
         return newT
 
     def execution(self):
@@ -82,11 +85,6 @@ class Rtm:
         #self.printTapes()
 
     def setTransitionByStage(self, stage):
-
-        if int(stage) == self.nStates:
-            print("\nIt's all over, bro.")
-            exit()
-
         count = -1
         for t in self.transitions: # loop pelas transicoes
             count += 1
@@ -100,41 +98,29 @@ class Rtm:
     def Stage_1(self):
         self.initTransitions()
         self.transitions = self.getQuadruples()
-
-        print("\nTransitions: ", self.transitions, "\n")
-
         self.state = self.transitions[0][0]
-
-        self.setTransitionByStage(1) # vai paga a transicao do estagio 1
-
+        self.setTransitionByStage(1) # vai pega a transicao do estagio 1
         while True:
-
-            print("Input: ", self.inputTape)
-
             transition = self.transitions[self.currentTransitionIndex] # pega a transicao atual
             print("\nTransicao atual: ", transition, " index: ", self.currentTransitionIndex, "\n")
             aux = transition.partition("=")
             left = aux[0]
             right = aux[2]
             curState = left.partition(",")[0]
-            check = left.partition(",")[2][0] # se a entrada for quintupla
+            check = left.partition(",")[2][0]
             stage = left.partition(",")[0]
             move_write = right.partition(",")[2][0]
 
-            print ("Fita: ", self.inputTape, "Head at: ", self.inputTape[self.head])
-
-            print("\nCheck: ", self.inputTape[self.head], "\n")
-            print("\nHead: ", self.inputTape[self.head], "\n")
+            print ("Fita: ", self.inputTape, "Head at: ", self.head)
+            print("Check: ", check)
+            print("Head: ", self.inputTape[self.head])
 
             if check != "/" and self.inputTape[self.head] == check: # se nao é uma barra -> ESCREVE
                 self.inputTape[self.head] = move_write # recebe o simbolo do lado direito da transicao
                 self.historyTape.append(stage) # numero do estagio
-                print("\nEscreveu\n")
+                print("\nEscreveu", move_write)
                 self.currentTransitionIndex += 1 # incrementa o index da transicao
-                wrote = True
-
             elif check == "/": # caso o simbolo seja uma barra -> MOVE
-
                 if move_write == "L": # avancar para a esquerda
                     print("Movendo pra esquerda", self.head)
                     self.head -= 1
@@ -144,26 +130,14 @@ class Rtm:
                     # se a cabeça da fita é igual ao tamanho da fita, a fita é aumentada com um "B"
                     if self.head == len(self.inputTape):
                         self.inputTape.append("B")
-
-                if right[0] != curState: # o seguinte eh outro valor de estagio
+                self.currentTransitionIndex += 1 # incrementa o index da transicao
+                if right[0] != curState: # se a transicao seguinte eh outro valor de estagio
                     self.setTransitionByStage(right[0]) # envia o valor do estagio para onde tem que saltar
-
-                else:
-                    self.currentTransitionIndex -= 1 # volta para a transicao anterior a este deslocamento
-                    
-                    
-                #elif self.inputTape[self.head] != check: # avanca a transicao
-                #   if move_write == "R":
-                #       self.currentTransitionIndex += 1
-                #  elif move_write == "L":
-                #     self.currentTransitionIndex -= 1
-
             elif check != "/":
+                print("Pula 2 transições")
                 self.currentTransitionIndex += 2
-
-            if(self.currentTransitionIndex > len(self.transitions)):
-                print("It's over, bro.")
-                exit(0)
+            if(self.currentTransitionIndex >=  len(self.transitions)):
+                break
 
     def Stage_2(self):
         self.invertTransitions()

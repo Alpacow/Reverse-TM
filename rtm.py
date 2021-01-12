@@ -20,7 +20,6 @@ class Rtm:
     state = 0
 
     currentTransitionIndex = -1
-    nextTransitionIndex = 0
 
     def __init__(self, nStates, nInput, nTape, nTransitions, states, alphaInput, alphaTape, transitions, _input):
         self.nStates = nStates
@@ -46,13 +45,11 @@ class Rtm:
         print("Número de transições: ", self.nTransitions)
         print("Transições: ", self.transitions)
         print("Entrada: ", self.input)
-        print("Fita 1: ", self.inputTape)
-        print("Fita 3: ", self.outputTape)
         print("\nInput check: ", self.checkInput())
         print("State check: ", self.checkStates())
         print("Symbols check: ", self.checkSymbols())
         print("Tape symbols check: ", self.checkTapeSymbols())
-        print("Transitions check: ", self.transitionsCheck())
+        print("Transitions check: ", self.transitionsCheck(), "\n")
 
     def initTransitions(self): # remove as virgulas e parenteses
         for i in range(len(self.transitions)):
@@ -74,26 +71,29 @@ class Rtm:
             newT.append(tr + ',' + check + '/B=' + tr + ',' + symbol + sigma + 'B')
             newT.append(tr + ',' + '/B/=' + tr2 + ',' + sigma + tr + '0')
             count += 2
-        self.transitions = newT.copy()
+        self.transitions = newT
         self.nTransitions = count
 
     def execution(self):
-        print("Estado inicial:")
+        print("ESTADO INICIAL")
+        self.printValues()
+        if not self.checkTmValues():
+            print("Valores iniciais da MT são inválidos")
+            exit(-1)
         self.printTapes()
         self.initTransitions()
-        self.getQuadruples() # transicoes estao em writeT e moveT
-        print("Estagio 1:")
+        self.getQuadruples() # transicoes ficam em writeT e moveT
+        print("ESTAGIO 1: realiza os passos de uma MT")
         self.Stage_1()
         self.printTapes()
-        print("Estagio 2:")
+        print("ESTAGIO 2: inverte as transições e copia Fita 1 para Fita 3")
         self.Stage_2()
         self.printTapes()
-        print("Estagio 3:")
+        print("ESTAGIO 3: realiza os passos da MT para reverter a Fita 1")
         self.Stage_3()
         self.printTapes()
 
     def setNextTransitionByState(self, state, wm):
-        print("--Procurando estado", state) # debug
         if wm == "W":
             tr = self.writeT
         elif wm == "M": # se M deve usar as transicoes de movimento
@@ -107,7 +107,6 @@ class Rtm:
         for i in range(self.currentTransitionIndex, len(tr)): # loop pelas transicoes
             if int(tr[i][0]) == int(state):
                 self.currentTransitionIndex = i
-                self.nextTransitionIndex = i
                 find = True
                 break
         if not find:
@@ -120,7 +119,7 @@ class Rtm:
             tWrite = self.writeT[self.currentTransitionIndex] # pega a transicao de escrita atual
             stateW, checkW, write = self.getValues(tWrite)
             tMove = self.moveT[self.currentTransitionIndex] # pega a transicao de movimento atual
-            stateM, checkM, move = self.getValues(tMove)
+            _, _, move = self.getValues(tMove)
             if stateW == nextState and self.inputTape[self.head] == checkW: # se a cabeca da fita corresponde ao simbolo da transicao de write
                 nextState = tMove.partition("=")[2][0]
                 self.inputTape[self.head] = write # recebe o simbolo do lado direito da transicao
@@ -135,7 +134,6 @@ class Rtm:
                 self.setNextTransitionByState(nextState, "W") # envia o valor do estagio para onde tem que saltar
             if(self.currentTransitionIndex >=  len(self.writeT) or self.head >= len(self.inputTape) or self.head < 0):
                 break
-        print("Cabeca da fita 1 parou em = ", self.head)
         self.currentTransitionIndex = 0
 
     def Stage_2(self):
@@ -147,37 +145,26 @@ class Rtm:
         nextState = self.historyTape[-1] # pega o ultimo estado realizado
         self.setNextTransitionByState(nextState, "M") # seta a transicao do ultimo estado feito
         i = 0
-        while i < 30:
-            print("\n*-- INPUT --*: ", self.inputTape, "Cabeca: ", self.head)
-            print("History Tape: ", self.historyTape)
+        while True:
             tMove = self.moveT[self.currentTransitionIndex] # pega a transicao de movimento atual
-            stateM, checkM, move = self.getValues(tMove)
-            print("Transicao de movimento:", tMove)
-
+            stateM, _, move = self.getValues(tMove)
             tWrite = self.writeT[self.currentTransitionIndex] # pega a transicao de escrita atual
-            stateW, checkW, write = self.getValues(tWrite)
-            print("Transicao de escrita:", tWrite)
-
+            _, checkW, write = self.getValues(tWrite)
             nextStateOfTransition = tWrite.partition("=")[2][0] # pega o proximo estado da transicao de escrita atual
-            print(nextState, " eh o ATUAL ", tWrite.partition("=")[2], "do", nextState, "para", nextStateOfTransition, "Esperado eh: ", self.historyTape[-1])
             # se o estado é o esperado, a cabeca da fita corresponde ao simbolo da transicao de move e o prox estado eh oq esta em 'history'
             if stateM == nextState and self.isSymbolValid(checkW, move)  and int(nextStateOfTransition) == int(self.historyTape[-1]):
                 if move == "L": # avanca cabeca da fita 1 para a esquerda
                     self.head -= 1
-                    print("Moveu pra esquerda",self.head, "Escreveu", write)
                 elif move == "R": # avanca cabeca da fita 1 para a direita
                     self.head += 1
-                    print("Moveu pra direita",self.head, "Escreveu", write)
                 # apos mover, realiza a escrita correspondente
                 self.inputTape[self.head] = write # recebe o simbolo do lado direito da transicao
                 nextState = self.historyTape.pop() # retira o numero do estado
-                print("Proximo estado e", nextState, self.historyTape,len(self.historyTape) == 0)
                 self.setNextTransitionByState(nextState, "M") # envia o valor do estagio para onde tem que saltar
             else:
                 self.setNextTransitionByState(nextState, "M") # envia o valor do estagio para onde tem que saltar
             i += 1
             if(self.head >= len(self.inputTape) or self.head < 0 or len(self.historyTape) == 0):
-                print("Finalizado")
                 return
 
     def invertTransitions(self): # Stage 2
@@ -191,10 +178,10 @@ class Rtm:
             auxRight = part[2]
             l = auxLeft.partition(",")
             r = auxRight.partition(",")
-            if (index % 2 == 0):
+            if (index % 2 == 0): # transicoes de movimento = mantem apenas o simbolo
                 newL = r[0] + "," + r[2][0] + l[2][1] + r[2][2]
                 newR = l[0] + "," + l[2][0] + r[2][1] + l[2][2]
-            else:
+            else: # transicoes de escrita = troca o simbolo do meio e os estados
                 newL = r[0] + "," + l[2][0] + r[2][1] + l[2][2]
                 newR = l[0] + "," + r[2][0] + l[2][1] + r[2][2]
             self.transitions[index] = newL + "=" + newR
@@ -222,11 +209,11 @@ class Rtm:
         return self.nTransitions == len(self.transitions)
 
     def printTapes(self):
-        print("inputTape:", self.inputTape)
-        print("historyTape:", self.historyTape)
-        print("OutputTape:", self.outputTape, "\n")
+        print("Fita 1 -> Entrada:", self.inputTape)
+        print("Fita 2 -> Histórico:", self.historyTape)
+        print("Fita 3 -> Saída:", self.outputTape, "\n")
 
-    def getValues(self, transition):
+    def getValues(self, transition): # retorna apenas os valores significativos de cada quadrupla
         aux = transition.partition("=")
         left = aux[0]
         right = aux[2]
@@ -235,20 +222,24 @@ class Rtm:
         move_write = right.partition(",")[2][0]
         return state, check, move_write
 
-    def separateTransitions(self):
+    def separateTransitions(self): # separa as transicoes invertidas em duas listas
         self.moveT = []
         self.writeT = []
         for t in self.transitions:
             tr = t[2]
             if tr == '/': # se for movimento
                 self.moveT.append(t)
-            else:
+            else:         # se for escrita
                 self.writeT.append(t)
 
+     # verifica se simbolo da transicao de escrita e valido apos movimentar cabeca da fita 1
     def isSymbolValid(self, checkW, move):
         aux = -1
-        if move == "L": # avanca cabeca da fita 1 para a esquerda
+        if move == "L":   # avanca cabeca da fita 1 para a esquerda
             aux = self.head - 1
         elif move == "R": # avanca cabeca da fita 1 para a direita
             aux = self.head + 1
         return self.inputTape[aux] == checkW
+    
+    def checkTmValues(self):
+        return self.checkInput() and self.checkSymbols() and self.checkTapeSymbols() and self.transitionsCheck()

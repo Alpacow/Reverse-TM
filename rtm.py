@@ -62,6 +62,7 @@ class Rtm:
 
     def getQuadruples(self):
         count = 0
+        newT = []
         for t in self.transitions:
             tr = t[0]
             tr2 = t[3]
@@ -70,7 +71,10 @@ class Rtm:
             sigma = t[5]
             self.writeT.append(tr + ',' + check + '/B=' + tr + ',' + symbol + sigma + 'B')
             self.moveT.append(tr + ',' + '/B/=' + tr2 + ',' + sigma + tr + '0')
+            newT.append(tr + ',' + check + '/B=' + tr + ',' + symbol + sigma + 'B')
+            newT.append(tr + ',' + '/B/=' + tr2 + ',' + sigma + tr + '0')
             count += 2
+        self.transitions = newT.copy()
         self.nTransitions = count
 
     def execution(self):
@@ -81,98 +85,100 @@ class Rtm:
         print("Estagio 1:")
         self.Stage_1()
         self.printTapes()
-        """
         print("Estagio 2:")
         self.Stage_2()
         self.printTapes()
         print("Estagio 3:")
         self.Stage_3()
         self.printTapes()
-        """
 
-    def setNextWriteTransitionByState(self, state):
-        #print("--Procurando estado", state) # debug
+    def setNextTransitionByState(self, state, wm):
+        print("--Procurando estado", state) # debug
+        if wm == "W":
+            tr = self.writeT
+        elif wm == "M": # se M deve usar as transicoes de movimento
+            if len(self.historyTape) == 0: # se a fita de history ficou vazia nao precisa mais procurar
+                return
+            tr = self.moveT
         self.currentTransitionIndex += 1
-        if self.currentTransitionIndex >= len(self.writeT):
-            #print("Passou, atualizando index transicao", self.currentTransitionIndex)  # debug
+        find = False
+        if self.currentTransitionIndex >= len(tr):
             self.currentTransitionIndex = 0
-        for i in range(self.currentTransitionIndex, len(self.writeT)): # loop pelas transicoes
-            if int(self.writeT[i][0]) == int(state):
+        for i in range(self.currentTransitionIndex, len(tr)): # loop pelas transicoes
+            if int(tr[i][0]) == int(state):
                 self.currentTransitionIndex = i
                 self.nextTransitionIndex = i
-                return
+                find = True
+                break
+        if not find:
+            self.setNextTransitionByState(state, wm)
 
     def Stage_1(self):
-        self.setNextWriteTransitionByState(1) # vai pega a transicao do estagio 1
+        self.setNextTransitionByState(1, "W") # vai pega a transicao do estagio 1
         nextState = self.writeT[self.currentTransitionIndex][0] # pega o primeiro estado valido
-        print(self.writeT[self.currentTransitionIndex], nextState)
-        i = 0
         while True:
-            print("*-- INPUT --*: ", self.inputTape, "Cabeca: ", self.head, self.inputTape[self.head])
             tWrite = self.writeT[self.currentTransitionIndex] # pega a transicao de escrita atual
             stateW, checkW, write = self.getValues(tWrite)
-            print("Transicao de escrita:", tWrite)
-
             tMove = self.moveT[self.currentTransitionIndex] # pega a transicao de movimento atual
             stateM, checkM, move = self.getValues(tMove)
-            print("Transicao de movimento:", tMove)
             if stateW == nextState and self.inputTape[self.head] == checkW: # se a cabeca da fita corresponde ao simbolo da transicao de write
                 nextState = tMove.partition("=")[2][0]
-                print("Proximo estado e", nextState)
                 self.inputTape[self.head] = write # recebe o simbolo do lado direito da transicao
                 self.historyTape.append(stateW) # numero do estado
                 # apos escrever, realiza o movimento correspondente
                 if move == "L": # avanca cabeca da fita 1 para a esquerda
                     self.head -= 1
-                    print("Escreveu", write, "Moveu pra esquerda",self.head)
                 elif move == "R": # avanca cabeca da fita 1 para a direita
                     self.head += 1
-                    print("Escreveu", write, "Moveu pra direita",self.head)
-                self.setNextWriteTransitionByState(nextState) # envia o valor do estagio para onde tem que saltar
+                self.setNextTransitionByState(nextState, "W") # envia o valor do estagio para onde tem que saltar
             else:
-                self.setNextWriteTransitionByState(nextState) # envia o valor do estagio para onde tem que saltar
-            i += 1
+                self.setNextTransitionByState(nextState, "W") # envia o valor do estagio para onde tem que saltar
             if(self.currentTransitionIndex >=  len(self.writeT) or self.head >= len(self.inputTape) or self.head < 0):
                 break
-        print("cabeca parou em = ", self.head)
+        print("Cabeca da fita 1 parou em = ", self.head)
+        self.currentTransitionIndex = 0
 
     def Stage_2(self):
         self.invertTransitions()
+        self.separateTransitions()
         self.outputTape = self.inputTape.copy(); # copia a fita 1 para a fita 3
 
     def Stage_3(self):
-        self.setNextWriteTransitionByState(1) # vai pega a transicao do estagio 1
-        nextState = self.writeT[self.currentTransitionIndex][0] # pega o primeiro estado valido
-        print(self.writeT[self.currentTransitionIndex], nextState)
+        nextState = self.historyTape[-1] # pega o ultimo estado realizado
+        self.setNextTransitionByState(nextState, "M") # seta a transicao do ultimo estado feito
         i = 0
-        while True:
-            print("*-- INPUT --*: ", self.inputTape, "Cabeca: ", self.head, self.inputTape[self.head])
+        while i < 30:
+            print("\n*-- INPUT --*: ", self.inputTape, "Cabeca: ", self.head)
+            print("History Tape: ", self.historyTape)
+            tMove = self.moveT[self.currentTransitionIndex] # pega a transicao de movimento atual
+            stateM, checkM, move = self.getValues(tMove)
+            print("Transicao de movimento:", tMove)
+
             tWrite = self.writeT[self.currentTransitionIndex] # pega a transicao de escrita atual
             stateW, checkW, write = self.getValues(tWrite)
             print("Transicao de escrita:", tWrite)
 
-            tMove = self.moveT[self.currentTransitionIndex] # pega a transicao de movimento atual
-            stateM, checkM, move = self.getValues(tMove)
-            print("Transicao de movimento:", tMove)
-            if stateW == nextState and self.inputTape[self.head] == checkW: # se a cabeca da fita corresponde ao simbolo da transicao de write
-                nextState = tMove.partition("=")[2][0]
-                print("Proximo estado e", nextState)
-                self.inputTape[self.head] = write # recebe o simbolo do lado direito da transicao
-                self.historyTape.append(stateW) # numero do estado
-                # apos escrever, realiza o movimento correspondente
+            nextStateOfTransition = tWrite.partition("=")[2][0] # pega o proximo estado da transicao de escrita atual
+            print(nextState, " eh o ATUAL ", tWrite.partition("=")[2], "do", nextState, "para", nextStateOfTransition, "Esperado eh: ", self.historyTape[-1])
+            # se o estado é o esperado, a cabeca da fita corresponde ao simbolo da transicao de move e o prox estado eh oq esta em 'history'
+            if stateM == nextState and self.isSymbolValid(checkW, move)  and int(nextStateOfTransition) == int(self.historyTape[-1]):
                 if move == "L": # avanca cabeca da fita 1 para a esquerda
                     self.head -= 1
-                    print("Escreveu", write, "Moveu pra esquerda",self.head)
+                    print("Moveu pra esquerda",self.head, "Escreveu", write)
                 elif move == "R": # avanca cabeca da fita 1 para a direita
                     self.head += 1
-                    print("Escreveu", write, "Moveu pra direita",self.head)
-                self.setNextWriteTransitionByState(nextState) # envia o valor do estagio para onde tem que saltar
+                    print("Moveu pra direita",self.head, "Escreveu", write)
+                # apos mover, realiza a escrita correspondente
+                self.inputTape[self.head] = write # recebe o simbolo do lado direito da transicao
+                nextState = self.historyTape.pop() # retira o numero do estado
+                print("Proximo estado e", nextState, self.historyTape,len(self.historyTape) == 0)
+                self.setNextTransitionByState(nextState, "M") # envia o valor do estagio para onde tem que saltar
             else:
-                self.setNextWriteTransitionByState(nextState) # envia o valor do estagio para onde tem que saltar
+                self.setNextTransitionByState(nextState, "M") # envia o valor do estagio para onde tem que saltar
             i += 1
-            if(self.currentTransitionIndex >=  len(self.writeT) or self.head >= len(self.inputTape) or self.head < 0):
-                break
-        print("cabeca parou em = ", self.head)
+            if(self.head >= len(self.inputTape) or self.head < 0 or len(self.historyTape) == 0):
+                print("Finalizado")
+                return
 
     def invertTransitions(self): # Stage 2
         for index in range(0, len(self.transitions)): # inverte as letras direcionais
@@ -228,3 +234,21 @@ class Rtm:
         check = left.partition(",")[2][0]
         move_write = right.partition(",")[2][0]
         return state, check, move_write
+
+    def separateTransitions(self):
+        self.moveT = []
+        self.writeT = []
+        for t in self.transitions:
+            tr = t[2]
+            if tr == '/': # se for movimento
+                self.moveT.append(t)
+            else:
+                self.writeT.append(t)
+
+    def isSymbolValid(self, checkW, move):
+        aux = -1
+        if move == "L": # avanca cabeca da fita 1 para a esquerda
+            aux = self.head - 1
+        elif move == "R": # avanca cabeca da fita 1 para a direita
+            aux = self.head + 1
+        return self.inputTape[aux] == checkW
